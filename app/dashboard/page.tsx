@@ -88,6 +88,7 @@ type Habit = {
 };
 
 type Completion = { habit_id: string; day: string }; // day is YYYY-MM-DD
+
 type Task = {
   id: string;
   title: string;
@@ -108,14 +109,30 @@ type PlanItem = {
 };
 
 /** =========================
- *  UI tiny components
+ *  Premium UI primitives
  *  ========================= */
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-slate-950 text-white relative overflow-hidden">
+      {/* background glow */}
+      <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-cyan-500/15 blur-3xl" />
+        <div className="absolute top-40 -right-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.08),transparent_40%),radial-gradient(circle_at_80%_20%,rgba(99,102,241,0.10),transparent_45%),radial-gradient(circle_at_50%_90%,rgba(236,72,153,0.08),transparent_45%)]" />
+      </div>
+
+      <div className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">{children}</div>
+    </div>
+  );
+}
+
 function Card(props: { title?: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03]">
+    <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
       {(props.title || props.right) && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <div className="font-bold">{props.title}</div>
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/10">
+          <div className="font-bold tracking-tight">{props.title}</div>
           {props.right}
         </div>
       )}
@@ -124,6 +141,75 @@ function Card(props: { title?: string; right?: React.ReactNode; children: React.
   );
 }
 
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="text-[10px] uppercase text-white/50 font-bold mb-1">{children}</div>;
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={
+        "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20 " +
+        (props.className ?? "")
+      }
+    />
+  );
+}
+
+function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      {...props}
+      className={
+        "w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none focus:border-cyan-400/50 focus:ring-2 focus:ring-cyan-400/20 " +
+        (props.className ?? "")
+      }
+    />
+  );
+}
+
+function GhostButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className={
+        "rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm hover:bg-white/[0.06] active:scale-[0.99] " +
+        (props.className ?? "")
+      }
+    />
+  );
+}
+
+function PrimaryButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className={
+        "w-full rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-3 font-bold text-slate-950 shadow-[0_20px_60px_rgba(34,211,238,0.15)] active:scale-[0.99] disabled:opacity-60 " +
+        (props.className ?? "")
+      }
+    />
+  );
+}
+
+function Pill({ active, children, onClick }: { active?: boolean; children: React.ReactNode; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "rounded-2xl border px-3 py-2 text-sm font-bold " +
+        (active ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+/** =========================
+ *  Page
+ *  ========================= */
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -206,7 +292,6 @@ export default function DashboardPage() {
         .eq("user_id", userId);
 
       if (cErr) return alert(cErr.message);
-      // supabase returns day as "YYYY-MM-DD"
       setCompletions((c as any) ?? []);
     })();
   }, [userId]);
@@ -254,11 +339,11 @@ export default function DashboardPage() {
   }, [completions]);
 
   /** =========================
-   *  Habits for selected day (FIXED for your DB format)
+   *  Habits for selected day (DB format)
    *  ========================= */
   const selectedDayKey = useMemo(() => {
     if (!selectedDayISO) return "1";
-    return isoToDbDayKey(selectedDayISO); // "1".."7"
+    return isoToDbDayKey(selectedDayISO);
   }, [selectedDayISO]);
 
   const habitsToday = useMemo(() => {
@@ -276,7 +361,7 @@ export default function DashboardPage() {
     let cursor = fromISODate(todayISO);
     for (let i = 0; i < 90; i++) {
       const iso = toISODateLocal(cursor);
-      const key = isoToDbDayKey(iso); // "1".."7"
+      const key = isoToDbDayKey(iso);
       const scheduled = (h.days ?? []).includes(key);
 
       if (!scheduled) {
@@ -377,7 +462,6 @@ export default function DashboardPage() {
 
     const candidates: PlanItem[] = [];
 
-    // tasks
     for (const t of tasks) {
       const base = Math.max(1, Math.min(10, t.priority));
       let urgency = 0;
@@ -402,7 +486,6 @@ export default function DashboardPage() {
       });
     }
 
-    // habits for that day
     for (const h of habitsToday) {
       const base = 6;
       const urgency = 0;
@@ -444,7 +527,7 @@ export default function DashboardPage() {
       remainingMinutes: Math.max(0, availableMinutes - used),
       totalScore: plan.reduce((s, x) => s + x.score, 0),
     };
-  }, [todayISO, selectedDayISO, tasks, habitsToday, availableMinutes]); // habitsToday now stable
+  }, [todayISO, selectedDayISO, tasks, habitsToday, availableMinutes]);
 
   useEffect(() => {
     if (planResult?.plan?.[0]?.id) setSelectedPlanId(planResult.plan[0].id);
@@ -515,429 +598,404 @@ export default function DashboardPage() {
     };
   }, [isRunning]);
 
-  const pomMM = Math.floor(secondsLeft / 60);
-  const pomSS = secondsLeft % 60;
-
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/login");
   }
 
   if (!todayISO || !userId || !selectedDayISO) {
-    return <div className="min-h-screen p-8 text-white/70">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-slate-950 text-white">
+        <div className="mx-auto max-w-4xl px-6 py-10 text-white/70">Loading…</div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen px-6 py-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-black">Let’s plan your day</div>
-            <div className="text-sm text-white/60">{email}</div>
-            <div className="mt-2">
-              <Link href="/onboarding" className="text-cyan-300 text-xs hover:underline">
-                wanna change your habits? click here →
-              </Link>
-            </div>
+    <Shell>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-3xl font-black tracking-tight bg-gradient-to-r from-cyan-300 to-indigo-300 bg-clip-text text-transparent">
+            Let’s plan your day
           </div>
-          <div className="flex items-center gap-3">
-            <div className="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] text-xs">
-              Score: <span className="font-bold text-cyan-300">{score}</span>
-            </div>
-            <button
-              onClick={logout}
-              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm hover:bg-white/[0.06]"
-            >
-              Logout
-            </button>
+          <div className="text-sm text-white/60">{email}</div>
+          <div className="mt-2">
+            <Link href="/onboarding" className="text-cyan-300 text-xs hover:underline">
+              wanna change your habits? click here →
+            </Link>
           </div>
         </div>
 
-        {/* Week controls + day pills */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-2 rounded-2xl border border-white/10 bg-white/[0.04] text-xs">
+            Score: <span className="font-bold text-cyan-200">{score}</span>
+          </div>
+          <GhostButton onClick={logout}>Logout</GhostButton>
+        </div>
+      </div>
+
+      {/* Week controls + day pills */}
+      <Card
+        title="Week"
+        right={
           <div className="flex gap-2">
-            <button onClick={() => setWeekOffset((p) => p - 1)} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm hover:bg-white/[0.06]">
-              ← Prev
-            </button>
-            <button onClick={() => setWeekOffset(0)} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm hover:bg-white/[0.06]">
-              This week
-            </button>
-            <button onClick={() => setWeekOffset((p) => p + 1)} className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm hover:bg-white/[0.06]">
-              Next →
-            </button>
+            <GhostButton onClick={() => setWeekOffset((p) => p - 1)}>← Prev</GhostButton>
+            <GhostButton onClick={() => setWeekOffset(0)}>This week</GhostButton>
+            <GhostButton onClick={() => setWeekOffset((p) => p + 1)}>Next →</GhostButton>
           </div>
-
-          <div className="flex gap-2 flex-wrap">
-            {weekDates.map((d) => {
-              const iso = toISODateLocal(d);
-              const key = isoToDbDayKey(iso);
-              const active = iso === selectedDayISO;
-              return (
-                <button
-                  key={iso}
-                  onClick={() => setSelectedDayISO(iso)}
-                  className={`rounded-xl border px-3 py-2 text-sm ${
-                    active ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80"
-                  }`}
-                >
-                  <div className="font-bold">{DAY_LABEL_DB[key]}</div>
-                  <div className="text-[10px] text-white/60">{iso.slice(5)}</div>
-                </button>
-              );
-            })}
-          </div>
+        }
+      >
+        <div className="flex gap-2 flex-wrap">
+          {weekDates.map((d) => {
+            const iso = toISODateLocal(d);
+            const key = isoToDbDayKey(iso);
+            const active = iso === selectedDayISO;
+            return (
+              <button
+                key={iso}
+                onClick={() => setSelectedDayISO(iso)}
+                className={
+                  "rounded-2xl border px-3 py-2 text-sm " +
+                  (active ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80")
+                }
+              >
+                <div className="font-extrabold">{DAY_LABEL_DB[key]}</div>
+                <div className="text-[10px] text-white/60 font-mono">{iso.slice(5)}</div>
+              </button>
+            );
+          })}
         </div>
+      </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT */}
-          <div className="lg:col-span-5 space-y-6">
-            <Card title="Today settings">
-              <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT */}
+        <div className="lg:col-span-5 space-y-6">
+          <Card title="Today settings">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label>Minutes today</Label>
+                <Input
+                  type="number"
+                  value={availableMinutes}
+                  onChange={(e) => setAvailableMinutes(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div>
+                <Label>Start time</Label>
+                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+              </div>
+              <div>
+                <Label>Break (min)</Label>
+                <Input
+                  type="number"
+                  value={breakMinutes}
+                  onChange={(e) => setBreakMinutes(Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Your habits for this day" right={<div className="text-xs text-white/60">{habitsToday.length} items</div>}>
+            <div className="space-y-2">
+              {habitsToday.length === 0 ? (
+                <div className="text-white/60 text-sm">
+                  No habits scheduled for this day. <span className="text-white/40">(dayKey={selectedDayKey})</span>
+                </div>
+              ) : (
+                habitsToday.map((h) => {
+                  const set = completionMap[h.id] || new Set<string>();
+                  const done = set.has(selectedDayISO);
+                  const streak = streakForHabit(h);
+                  const bonus = streak >= 3 ? " (+bonus)" : "";
+
+                  return (
+                    <div key={h.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                      <div>
+                        <div className="font-bold">{h.title}</div>
+                        <div className="text-xs text-white/60">
+                          {h.minutes}m • streak:{" "}
+                          <span className={streak >= 3 ? "text-emerald-300 font-bold" : ""}>{streak}</span>
+                          {bonus}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleComplete(h.id, selectedDayISO)}
+                        className={
+                          "rounded-2xl border px-3 py-2 text-xs font-bold active:scale-[0.99] " +
+                          (done
+                            ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
+                            : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80")
+                        }
+                      >
+                        {done ? "Done ✓" : "Mark"}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Card>
+
+          <Card title="Add task (deadline / study)">
+            <div className="space-y-3">
+              <Input
+                placeholder="Task title..."
+                value={tTitle}
+                onChange={(e) => setTTitle(e.target.value)}
+              />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Minutes today</div>
-                  <input
-                    type="number"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
-                    value={availableMinutes}
-                    onChange={(e) => setAvailableMinutes(Number(e.target.value) || 0)}
-                  />
+                  <Label>Type</Label>
+                  <Select value={tType} onChange={(e) => setTType(e.target.value as any)}>
+                    <option value="study">Study</option>
+                    <option value="deadline">Deadline</option>
+                  </Select>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Start time</div>
-                  <input
-                    type="time"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
+                  <Label>Minutes</Label>
+                  <Input type="number" value={tMinutes} onChange={(e) => setTMinutes(Number(e.target.value) || 0)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label>Priority (1–10)</Label>
+                  <Input type="number" value={tPriority} onChange={(e) => setTPriority(Number(e.target.value) || 1)} />
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Break (min)</div>
-                  <input
-                    type="number"
-                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none"
-                    value={breakMinutes}
-                    onChange={(e) => setBreakMinutes(Number(e.target.value) || 0)}
+                  <Label>Deadline date</Label>
+                  <Input
+                    type="date"
+                    disabled={tType !== "deadline"}
+                    className="disabled:opacity-40"
+                    value={tDeadline}
+                    onChange={(e) => setTDeadline(e.target.value)}
                   />
                 </div>
               </div>
-            </Card>
 
-            <Card
-              title="Your habits for this day"
-              right={<div className="text-xs text-white/60">{habitsToday.length} items</div>}
-            >
-              <div className="space-y-2">
-                {habitsToday.length === 0 ? (
-                  <div className="text-white/60 text-sm">
-                    No habits scheduled for this day. <span className="text-white/40">(dayKey={selectedDayKey})</span>
-                  </div>
+              <PrimaryButton onClick={addTask}>Add task</PrimaryButton>
+
+              <div className="mt-3 space-y-2">
+                {tasks.length === 0 ? (
+                  <div className="text-white/60 text-sm">No tasks for this day yet.</div>
                 ) : (
-                  habitsToday.map((h) => {
-                    const set = completionMap[h.id] || new Set<string>();
-                    const done = set.has(selectedDayISO);
-                    const streak = streakForHabit(h);
-                    const bonus = streak >= 3 ? " (+bonus)" : "";
-
-                    return (
-                      <div key={h.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-                        <div>
-                          <div className="font-bold">{h.title}</div>
-                          <div className="text-xs text-white/60">
-                            {h.minutes}m • streak:{" "}
-                            <span className={streak >= 3 ? "text-emerald-300 font-bold" : ""}>{streak}</span>
-                            {bonus}
-                          </div>
+                  tasks.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                      <div>
+                        <div className="font-bold">{t.title}</div>
+                        <div className="text-xs text-white/60">
+                          {t.minutes}m • priority {t.priority} {t.type === "deadline" && t.deadline ? `• deadline ${t.deadline}` : ""}
                         </div>
-                        <button
-                          onClick={() => toggleComplete(h.id, selectedDayISO)}
-                          className={`rounded-xl border px-3 py-2 text-xs font-bold ${
-                            done ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80"
-                          }`}
-                        >
-                          {done ? "Done ✓" : "Mark"}
-                        </button>
                       </div>
-                    );
-                  })
+                      <button
+                        onClick={() => removeTask(t.id)}
+                        className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-500/20 active:scale-[0.99]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ))
                 )}
               </div>
-            </Card>
+            </div>
+          </Card>
+        </div>
 
-            <Card title="Add task (deadline / study)">
-              <div className="space-y-3">
-                <input
-                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm outline-none focus:border-cyan-500/50"
-                  placeholder="Task title..."
-                  value={tTitle}
-                  onChange={(e) => setTTitle(e.target.value)}
-                />
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Type</div>
-                    <select
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm outline-none"
-                      value={tType}
-                      onChange={(e) => setTType(e.target.value as any)}
-                    >
-                      <option value="study">Study</option>
-                      <option value="deadline">Deadline</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Minutes</div>
-                    <input
-                      type="number"
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm outline-none"
-                      value={tMinutes}
-                      onChange={(e) => setTMinutes(Number(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Priority (1-10)</div>
-                    <input
-                      type="number"
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm outline-none"
-                      value={tPriority}
-                      onChange={(e) => setTPriority(Number(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase text-white/50 font-bold mb-1">Deadline date</div>
-                    <input
-                      type="date"
-                      disabled={tType !== "deadline"}
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm outline-none disabled:opacity-40"
-                      value={tDeadline}
-                      onChange={(e) => setTDeadline(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <button onClick={addTask} className="w-full rounded-xl bg-cyan-500 py-2 font-bold text-slate-900 hover:bg-cyan-400">
-                  Add task
-                </button>
-
-                <div className="mt-3 space-y-2">
-                  {tasks.length === 0 ? (
-                    <div className="text-white/60 text-sm">No tasks for this day yet.</div>
-                  ) : (
-                    tasks.map((t) => (
-                      <div key={t.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-                        <div>
-                          <div className="font-bold">{t.title}</div>
-                          <div className="text-xs text-white/60">
-                            {t.minutes}m • priority {t.priority}{" "}
-                            {t.type === "deadline" && t.deadline ? `• deadline ${t.deadline}` : ""}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => removeTask(t.id)}
-                          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-bold text-rose-200 hover:bg-rose-500/20"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </Card>
+        {/* RIGHT */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4">
+              <div className="text-[10px] uppercase text-white/50 font-bold">Used</div>
+              <div className="text-2xl font-black">{planResult?.usedMinutes ?? 0}m</div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4">
+              <div className="text-[10px] uppercase text-white/50 font-bold">Remaining</div>
+              <div className="text-2xl font-black">{planResult?.remainingMinutes ?? availableMinutes}m</div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4">
+              <div className="text-[10px] uppercase text-white/50 font-bold">Items</div>
+              <div className="text-2xl font-black">{planResult?.plan.length ?? 0}</div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-xl p-4">
+              <div className="text-[10px] uppercase text-white/50 font-bold">Optimization</div>
+              <div className="text-2xl font-black text-cyan-200">{planResult?.totalScore?.toFixed(0) ?? "0"}</div>
+            </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase text-white/50 font-bold">Used</div>
-                <div className="text-2xl font-black">{planResult?.usedMinutes ?? 0}m</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase text-white/50 font-bold">Remaining</div>
-                <div className="text-2xl font-black">{planResult?.remainingMinutes ?? availableMinutes}m</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase text-white/50 font-bold">Items</div>
-                <div className="text-2xl font-black">{planResult?.plan.length ?? 0}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase text-white/50 font-bold">Optimization</div>
-                <div className="text-2xl font-black text-cyan-300">{planResult?.totalScore?.toFixed(0) ?? "0"}</div>
-              </div>
-            </div>
+          <Card title="Optimized plan">
+            {!planResult || planResult.plan.length === 0 ? (
+              <div className="text-white/60 text-sm">Add tasks or habits — plan will appear here.</div>
+            ) : (
+              <div className="space-y-2">
+                {planResult.plan.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPlanId(p.id)}
+                    className={
+                      "w-full text-left rounded-2xl border px-4 py-3 active:scale-[0.99] " +
+                      (selectedPlanId === p.id
+                        ? "border-cyan-500/30 bg-cyan-500/10"
+                        : "border-white/10 bg-black/20 hover:bg-white/[0.05]")
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold">{p.title}</div>
+                        <div className="text-xs text-white/60">
+                          {p.minutes}m • {p.type}
+                        </div>
+                      </div>
+                      <div className="text-xs font-bold text-cyan-200">score {p.score.toFixed(0)}</div>
+                    </div>
 
-            <Card title="Optimized plan">
-              {!planResult || planResult.plan.length === 0 ? (
-                <div className="text-white/60 text-sm">Add tasks or habits — plan will appear here.</div>
+                    <div className="mt-2 flex gap-2 text-[10px] text-white/60 flex-wrap">
+                      <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">base {p.breakdown.base}</span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">urg {p.breakdown.urgency}</span>
+                      <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">streak +{p.breakdown.streakBonus}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="text-sm font-bold mb-2">Calendar</div>
+              {calendar.length === 0 ? (
+                <div className="text-white/60 text-sm">No schedule yet.</div>
               ) : (
                 <div className="space-y-2">
-                  {planResult.plan.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPlanId(p.id)}
-                      className={`w-full text-left rounded-xl border px-4 py-3 ${
-                        selectedPlanId === p.id
-                          ? "border-cyan-500/30 bg-cyan-500/10"
-                          : "border-white/10 bg-black/20 hover:bg-white/[0.05]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-bold">{p.title}</div>
-                          <div className="text-xs text-white/60">{p.minutes}m • {p.type}</div>
-                        </div>
-                        <div className="text-xs font-bold text-cyan-300">score {p.score.toFixed(0)}</div>
+                  {calendar.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between gap-3 text-sm">
+                      <div className="text-white/70 font-mono shrink-0">
+                        {c.start}–{c.end}
                       </div>
-                      <div className="mt-2 flex gap-2 text-[10px] text-white/60">
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">base {p.breakdown.base}</span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">urg {p.breakdown.urgency}</span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">streak +{p.breakdown.streakBonus}</span>
-                      </div>
-                    </button>
+                      <div className={c.isBreak ? "text-white/50" : "font-semibold"}>{c.title}</div>
+                      <div className="text-white/50 shrink-0">{c.minutes}m</div>
+                    </div>
                   ))}
                 </div>
               )}
+            </div>
+          </Card>
 
-              <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4">
-                <div className="text-sm font-bold mb-2">Calendar</div>
-                {calendar.length === 0 ? (
-                  <div className="text-white/60 text-sm">No schedule yet.</div>
+          <Card title="Pomodoro" right={<div className="text-xs text-white/60">Selected: {selectedPlanItem?.title ?? "none"}</div>}>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <Pill active={pomMode === "25_5"} onClick={() => setPomMode("25_5")}>
+                25 / 5
+              </Pill>
+              <Pill active={pomMode === "task"} onClick={() => setPomMode("task")}>
+                Use selected task minutes
+              </Pill>
+            </div>
+
+            <div className="text-5xl font-black tracking-tight mb-4">
+              {pad2(Math.floor(secondsLeft / 60))}:{pad2(secondsLeft % 60)}
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setIsRunning((p) => !p)}
+                className="rounded-2xl bg-gradient-to-r from-cyan-400 to-indigo-500 px-4 py-3 font-bold text-slate-950 shadow-[0_20px_60px_rgba(34,211,238,0.15)] active:scale-[0.99]"
+              >
+                {isRunning ? "Pause" : "Start"}
+              </button>
+
+              <GhostButton
+                onClick={() => {
+                  setIsRunning(false);
+                  setSecondsLeft(pomMode === "25_5" ? 25 * 60 : Math.max(60, (selectedPlanItem?.minutes ?? 25) * 60));
+                }}
+              >
+                Reset
+              </GhostButton>
+            </div>
+          </Card>
+
+          <Card title="Weekly grid (Mon–Sun)" right={<div className="text-xs text-white/60">tap ✓ to toggle</div>}>
+            <div className="overflow-auto">
+              <div className="min-w-[760px]">
+                <div className="grid grid-cols-8 gap-2 mb-2">
+                  <div className="text-xs text-white/60 font-bold px-2">Habit</div>
+                  {weekDates.map((d) => {
+                    const iso = toISODateLocal(d);
+                    const key = isoToDbDayKey(iso);
+                    const active = iso === selectedDayISO;
+                    return (
+                      <div
+                        key={iso}
+                        className={
+                          "rounded-2xl border px-2 py-2 text-xs font-bold " +
+                          (active ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-black/20 text-white/80")
+                        }
+                      >
+                        <div>{DAY_LABEL_DB[key]}</div>
+                        <div className="text-[10px] text-white/60 font-mono">{iso.slice(5)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {habits.length === 0 ? (
+                  <div className="text-white/60 text-sm">
+                    No habits. Go to{" "}
+                    <Link className="text-cyan-300 underline" href="/onboarding">
+                      onboarding
+                    </Link>
+                    .
+                  </div>
                 ) : (
                   <div className="space-y-2">
-                    {calendar.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <div className="text-white/70 font-mono">
-                          {c.start}–{c.end}
-                        </div>
-                        <div className={c.isBreak ? "text-white/50" : "font-semibold"}>{c.title}</div>
-                        <div className="text-white/50">{c.minutes}m</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card title="Pomodoro" right={<div className="text-xs text-white/60">Selected: {selectedPlanItem?.title ?? "none"}</div>}>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                  onClick={() => setPomMode("25_5")}
-                  className={`rounded-xl border px-3 py-2 text-sm ${
-                    pomMode === "25_5" ? "border-cyan-500/30 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:bg-white/[0.05]"
-                  }`}
-                >
-                  25 / 5
-                </button>
-                <button
-                  onClick={() => setPomMode("task")}
-                  className={`rounded-xl border px-3 py-2 text-sm ${
-                    pomMode === "task" ? "border-cyan-500/30 bg-cyan-500/10" : "border-white/10 bg-black/20 hover:bg-white/[0.05]"
-                  }`}
-                >
-                  Use selected task minutes
-                </button>
-              </div>
-
-              <div className="text-5xl font-black tracking-tight mb-4">
-                {pad2(Math.floor(secondsLeft / 60))}:{pad2(secondsLeft % 60)}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsRunning((p) => !p)}
-                  className="rounded-xl bg-cyan-500 px-4 py-2 font-bold text-slate-900 hover:bg-cyan-400"
-                >
-                  {isRunning ? "Pause" : "Start"}
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsRunning(false);
-                    setSecondsLeft(pomMode === "25_5" ? 25 * 60 : Math.max(60, (selectedPlanItem?.minutes ?? 25) * 60));
-                  }}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm hover:bg-white/[0.06]"
-                >
-                  Reset
-                </button>
-              </div>
-            </Card>
-
-            <Card title="Weekly grid (Mon–Sun)" right={<div className="text-xs text-white/60">click to toggle</div>}>
-              <div className="overflow-auto">
-                <div className="min-w-[760px]">
-                  <div className="grid grid-cols-8 gap-2 mb-2">
-                    <div className="text-xs text-white/60 font-bold px-2">Habit</div>
-                    {weekDates.map((d) => {
-                      const iso = toISODateLocal(d);
-                      const key = isoToDbDayKey(iso);
-                      const active = iso === selectedDayISO;
+                    {habits.map((h) => {
+                      const set = completionMap[h.id] || new Set<string>();
+                      const st = streakForHabit(h);
                       return (
-                        <div key={iso} className={`rounded-xl border px-2 py-2 text-xs font-bold ${active ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-200" : "border-white/10 bg-black/20 text-white/80"}`}>
-                          <div>{DAY_LABEL_DB[key]}</div>
-                          <div className="text-[10px] text-white/60">{iso.slice(5)}</div>
+                        <div key={h.id} className="grid grid-cols-8 gap-2 items-center">
+                          <div className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+                            <div className="font-bold">{h.title}</div>
+                            <div className="text-[10px] text-white/60">
+                              {h.minutes}m • days {(h.days ?? []).join(",")} • streak {st}
+                              {st >= 3 ? " (+bonus)" : ""}
+                            </div>
+                          </div>
+
+                          {weekDates.map((d) => {
+                            const iso = toISODateLocal(d);
+                            const key = isoToDbDayKey(iso);
+                            const scheduled = (h.days ?? []).includes(key);
+                            const done = set.has(iso);
+
+                            return (
+                              <button
+                                key={h.id + iso}
+                                onClick={() => toggleComplete(h.id, iso)}
+                                className={
+                                  "rounded-2xl border px-2 py-3 text-xs font-black active:scale-[0.99] " +
+                                  (!scheduled
+                                    ? "border-white/5 bg-white/[0.02] text-white/25"
+                                    : done
+                                    ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
+                                    : "border-white/10 bg-black/20 hover:bg-white/[0.05] text-white/70")
+                                }
+                                title={scheduled ? "toggle" : "not scheduled"}
+                              >
+                                {!scheduled ? "·" : done ? "✓" : "—"}
+                              </button>
+                            );
+                          })}
                         </div>
                       );
                     })}
                   </div>
-
-                  {habits.length === 0 ? (
-                    <div className="text-white/60 text-sm">
-                      No habits. Go to <Link className="text-cyan-300 underline" href="/onboarding">onboarding</Link>.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {habits.map((h) => {
-                        const set = completionMap[h.id] || new Set<string>();
-                        const st = streakForHabit(h);
-                        return (
-                          <div key={h.id} className="grid grid-cols-8 gap-2 items-center">
-                            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                              <div className="font-bold">{h.title}</div>
-                              <div className="text-[10px] text-white/60">
-                                {h.minutes}m • days {(h.days ?? []).join(",")} • streak {st}{st >= 3 ? " (+bonus)" : ""}
-                              </div>
-                            </div>
-
-                            {weekDates.map((d) => {
-                              const iso = toISODateLocal(d);
-                              const key = isoToDbDayKey(iso);
-                              const scheduled = (h.days ?? []).includes(key);
-                              const done = set.has(iso);
-
-                              return (
-                                <button
-                                  key={h.id + iso}
-                                  onClick={() => toggleComplete(h.id, iso)}
-                                  className={`rounded-xl border px-2 py-3 text-xs font-black ${
-                                    !scheduled
-                                      ? "border-white/5 bg-white/[0.02] text-white/25"
-                                      : done
-                                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
-                                      : "border-white/10 bg-black/20 hover:bg-white/[0.05] text-white/70"
-                                  }`}
-                                  title={scheduled ? "toggle" : "not scheduled"}
-                                >
-                                  {!scheduled ? "·" : done ? "✓" : "—"}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </div>
       </div>
-    </div>
+    </Shell>
   );
 }
